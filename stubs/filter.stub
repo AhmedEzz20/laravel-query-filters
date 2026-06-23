@@ -1,0 +1,23 @@
+<?php
+
+namespace DummyNamespace;
+
+use Astro\LaravelQueryFilters\Contracts\BaseFilters;
+
+class DummyClass extends BaseFilters
+{
+    /**
+     * Registered filters
+     */
+    protected array $filters = [
+        //
+    ];
+
+    /**
+     * Example filter
+     */
+    protected function example($value)
+    {
+        return $this->builder;
+    }
+}
