@@ -19,38 +19,43 @@ This package helps you build clean, reusable, and scalable query filters for you
 
 ## Installation
 
-Install via Composer:
-
 ```bash
 composer require dev-astro/laravel-query-filters
 ```
 
-The package uses Laravel's auto-discovery, so no manual registration is needed.
+The package uses Laravel's auto-discovery — no manual registration needed.
 
 ---
 
 ## How It Works
 
-The package works by mapping request query string keys to method names in your filter class. For every key in the request (e.g. `search_name`), it looks for a `camelCase` method with the same name (`searchName`) in your filter class and calls it automatically — passing the value as the argument.
+The package works by mapping request query string keys to method names in your filter class.
 
-If a key is present in the request but has no corresponding method, it is silently ignored.
+For every key in the `$filters` array, it checks if the request contains it, then calls the matching `camelCase` method in your filter class with the value.
+
+```
+Request key  →  Method name
+search_name  →  searchName($value)
+category_id  →  categoryId($value)
+```
+
+Keys ending in `_from` and `_to` are handled automatically as date range filters (no method needed).
 
 ---
 
 ## Features
 
-- Simple filter classes per model
-- Automatic request-based filtering (snake_case keys → camelCase methods)
-- Date range support (`created_from`, `created_to`)
-- Sorting support (`order_by`, `order_dir`)
-- Whitelist-based filter security via `$filters` array
-- Whitelist-based sortable columns via `$sortable` array
-- Clean and reusable architecture
-- Lightweight and easy to extend
+- Artisan command to generate filter classes (`make:filter`)
+- Automatic `Filterable` trait registration via auto-discovery
+- Dynamic filters via `$filters` whitelist
+- Date range filtering (`_from` / `_to` convention)
+- Built-in sorting (`order_by` / `order_dir`) with `$sortable` whitelist
+- `perPage` support via query string
+- Lightweight — no config file needed
 
 ---
 
-## Usage
+## Step-by-step Usage
 
 ### 1. Add the `Filterable` Trait to Your Model
 
@@ -61,86 +66,107 @@ class Brand extends Model
 {
     use Filterable;
 
-    // Point to your filter class
     protected $filter = BrandFilter::class;
+}
+```
+
+The trait adds:
+- A `filter()` Eloquent scope that auto-resolves your filter class
+- Support for `?perPage=20` in the request to override pagination size
+
+---
+
+### 2. Generate a Filter Class
+
+```bash
+php artisan make:filter BrandFilter
+```
+
+This creates `app/Http/Filters/BrandFilter.php`:
+
+```php
+namespace App\Http\Filters;
+
+use DevAstro\LaravelQueryFilters\Contracts\BaseFilters;
+
+class BrandFilter extends BaseFilters
+{
+    protected array $filters = [
+        //
+    ];
+
+    protected function example($value)
+    {
+        return $this->builder;
+    }
 }
 ```
 
 ---
 
-### 2. Create a Filter Class
+### 3. Define Your Filters
 
-Place your filter classes in `app/Filters/`. Each filter class extends `BaseFilters`.
+Add filter keys to the `$filters` array and write a matching `camelCase` method for each:
 
 ```php
-use DevAstro\LaravelQueryFilters\Contracts\BaseFilters;
-
 class BrandFilter extends BaseFilters
 {
-    /**
-     * Whitelisted filter keys from the request.
-     * Only keys listed here will be processed.
-     */
     protected array $filters = [
         'search_name',
-        'created_from',
-        'created_to',
+        'status',
+        'created_from',   // handled automatically — no method needed
+        'created_to',     // handled automatically — no method needed
     ];
 
-    /**
-     * Columns allowed for sorting via order_by.
-     * Requests with other column names will be ignored.
-     */
     protected array $sortable = [
         'id',
         'name',
         'created_at',
     ];
 
-    /**
-     * Called when ?search_name=value is present in the request.
-     * Method name is the camelCase version of the query key.
-     */
     protected function searchName($value)
     {
         return $this->builder->where('name', 'like', "%{$value}%");
     }
+
+    protected function status($value)
+    {
+        return $this->builder->where('status', $value);
+    }
 }
 ```
 
-> **Naming convention:** Request key `search_name` → method `searchName()`. Always use `snake_case` in `$filters` and `camelCase` for the method name.
-
 ---
 
-### 3. Use in Controller or Repository
+### 4. Use in Your Controller
 
 ```php
-// Apply all matching filters from the current request
-Brand::filter()->paginate();
-
-// With additional constraints
-Brand::filter()->where('is_active', true)->paginate();
-
-// Without pagination
-Brand::filter()->get();
+public function index()
+{
+    return BrandResource::collection(
+        Brand::filter()->paginate()
+    );
+}
 ```
 
-The `filter()` scope automatically resolves the registered filter class from the model's `$filter` property and applies all matching request parameters.
+That's it. The `filter()` scope automatically picks up the current request and applies all matching filters.
 
 ---
 
-## Built-in Filters
+## Built-in Features
 
-### Date Range
+### Date Range (`_from` / `_to`)
 
-The `created_from` and `created_to` keys are built into `BaseFilters` — you don't need to define methods for them, just add them to your `$filters` array:
+Any key ending in `_from` or `_to` is automatically handled as a `whereDate` filter — no method needed:
 
 ```php
 protected array $filters = [
-    'created_from',
-    'created_to',
+    'created_from',  // WHERE DATE(created_at) >= ?
+    'created_to',    // WHERE DATE(created_at) <= ?
 ];
 ```
+
+> The column name is derived by stripping the suffix: `created_from` → `created` column... so name your keys as `{column}_from` / `{column}_to`. For example, `published_from` filters on the `published` column.
 
 Example request:
 ```
@@ -149,16 +175,11 @@ GET /api/brands?created_from=2024-01-01&created_to=2024-12-31
 
 ---
 
-### Sorting
+### Sorting (`order_by` / `order_dir`)
 
-Sorting is built in. Add `order_by` and `order_dir` to your `$filters` array, and list allowed columns in `$sortable`:
+Sorting is handled automatically — you don't need to add `order_by` or `order_dir` to your `$filters` array. Just define which columns are allowed in `$sortable`:
 
 ```php
-protected array $filters = [
-    'order_by',
-    'order_dir',
-];
-
 protected array $sortable = [
     'id',
     'name',
@@ -166,13 +187,27 @@ protected array $sortable = [
 ];
 ```
 
+- `order_dir` defaults to `asc` if not provided or invalid
+- If `order_by` column is not in `$sortable`, the sort is silently ignored (security)
+
 Example requests:
 ```
 GET /api/brands?order_by=name&order_dir=asc
 GET /api/brands?order_by=created_at&order_dir=desc
 ```
 
-> If `order_by` is not in `$sortable`, the sort is ignored. Default direction is `asc`.
+---
+
+### Pagination (`perPage`)
+
+The `Filterable` trait overrides `getPerPage()`, so you can control page size from the request:
+
+```
+GET /api/brands?perPage=20
+GET /api/brands?perPage=50&page=2
+```
+
+Falls back to the model's default (`15`) if not provided.
 
 ---
 
@@ -180,11 +215,13 @@ GET /api/brands?order_by=created_at&order_dir=desc
 
 **Request:**
 ```
-GET /api/brands?search_name=nike&created_from=2024-01-01&order_by=name&order_dir=desc
+GET /api/brands?search_name=nike&created_from=2024-01-01&order_by=name&order_dir=desc&perPage=20
 ```
 
 **Filter class:**
 ```php
+namespace App\Http\Filters;
+
 use DevAstro\LaravelQueryFilters\Contracts\BaseFilters;
 
 class BrandFilter extends BaseFilters
@@ -193,8 +230,6 @@ class BrandFilter extends BaseFilters
         'search_name',
         'created_from',
         'created_to',
-        'order_by',
-        'order_dir',
     ];
 
     protected array $sortable = [
@@ -236,39 +271,60 @@ public function index()
 ```sql
 SELECT * FROM brands
 WHERE name LIKE '%nike%'
-  AND created_at >= '2024-01-01'
+  AND DATE(created_at) >= '2024-01-01'
 ORDER BY name DESC
+LIMIT 20
 ```
 
 ---
 
 ## Writing Custom Filters
 
-Any method in your filter class that matches a whitelisted key (after camelCase conversion) will be called with the request value:
+Every filter method receives the request value and has access to `$this->builder`:
 
 ```php
+// Exact match
 protected function status($value)
 {
     return $this->builder->where('status', $value);
 }
 
+// Relationship filter
 protected function categoryId($value)
 {
     return $this->builder->where('category_id', $value);
 }
 
+// Range filter (manual)
 protected function minFollowers($value)
 {
     return $this->builder->where('followers_count', '>=', $value);
 }
 
+// Existence check (boolean flag)
 protected function hasProducts($value)
 {
     return $this->builder->has('products');
 }
+
+// whereIn
+protected function statuses($value)
+{
+    return $this->builder->whereIn('status', explode(',', $value));
+}
 ```
 
-> You always have access to `$this->builder` which is the Eloquent query builder instance for the model.
+---
+
+## Quick Reference
+
+| Request Parameter | Behavior | Needs method? |
+|---|---|---|
+| `?search_name=x` | calls `searchName($value)` | ✅ Yes |
+| `?created_from=date` | `whereDate(column, '>=', date)` | ❌ No |
+| `?created_to=date` | `whereDate(column, '<=', date)` | ❌ No |
+| `?order_by=col&order_dir=asc` | `orderBy(col, dir)` — only if in `$sortable` | ❌ No |
+| `?perPage=20` | overrides pagination size | ❌ No |
 
 ---
 
@@ -276,6 +332,8 @@ protected function hasProducts($value)
 
 ```
 src/
+├── Commands/
+│   └── MakeFilterCommand.php    # php artisan make:filter
 ├── Contracts/
 │   └── BaseFilters.php          # Base class for all filter classes
 ├── Traits/
@@ -283,22 +341,8 @@ src/
 └── LaravelQueryFiltersServiceProvider.php
 
 stubs/
-└── Filter.stub                  # Stub used for filter generation
+└── filter.stub                  # Template used by make:filter
 ```
-
----
-
-## Quick Reference
-
-| Request Key | Filter Method | Example URL |
-|---|---|---|
-| `search_name` | `searchName($value)` | `?search_name=nike` |
-| `created_from` | Built-in | `?created_from=2024-01-01` |
-| `created_to` | Built-in | `?created_to=2024-12-31` |
-| `order_by` | Built-in | `?order_by=name` |
-| `order_dir` | Built-in | `?order_dir=desc` |
-| `category_id` | `categoryId($value)` | `?category_id=5` |
-| `min_followers` | `minFollowers($value)` | `?min_followers=1000` |
 
 ---
 
