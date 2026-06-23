@@ -1,17 +1,17 @@
 {
-    "name": "astro/laravel-query-filters",
+    "name": "dev-astro/laravel-query-filters",
     "description": "A simple and powerful query filtering system for Laravel",
     "type": "library",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Astro\\LaravelQueryFilters\\": "src/"
+            "DevAstro\\LaravelQueryFilters\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Astro\\LaravelQueryFilters\\LaravelQueryFiltersServiceProvider"
+                "DevAstro\\LaravelQueryFilters\\LaravelQueryFiltersServiceProvider"
             ]
         }
     },

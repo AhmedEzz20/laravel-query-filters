@@ -1,9 +1,9 @@
 <?php
 
-namespace Astro\LaravelQueryFilters;
+namespace DevAstro\LaravelQueryFilters;
 
 use Illuminate\Support\ServiceProvider;
-use Astro\LaravelQueryFilters\Commands\MakeFilterCommand;
+use DevAstro\LaravelQueryFilters\Commands\MakeFilterCommand;
 
 class LaravelQueryFiltersServiceProvider extends ServiceProvider
 {

@@ -2,7 +2,7 @@
 
 namespace DummyNamespace;
 
-use Astro\LaravelQueryFilters\Contracts\BaseFilters;
+use DevAstro\LaravelQueryFilters\Contracts\BaseFilters;
 
 class DummyClass extends BaseFilters
 {

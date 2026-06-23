@@ -1,6 +1,6 @@
 <?php
 
-namespace Astro\LaravelQueryFilters\Commands;
+namespace DevAstro\LaravelQueryFilters\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;

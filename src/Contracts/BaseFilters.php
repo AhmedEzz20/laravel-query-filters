@@ -1,6 +1,6 @@
 <?php
 
-namespace Astro\LaravelQueryFilters\Contracts;
+namespace DevAstro\LaravelQueryFilters\Contracts;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;

@@ -15,7 +15,7 @@ This package helps you build clean, reusable, and scalable query filters for you
 Install via Composer:
 
 ```bash
-composer require astro/laravel-query-filters
+composer require dev-astro/laravel-query-filters
 ```
 
 ---
@@ -36,7 +36,7 @@ composer require astro/laravel-query-filters
 ## 1. Add Filterable Trait to Model
 
 ```php
-use Astro\\LaravelQueryFilters\\Traits\\Filterable;
+use DevAstro\\LaravelQueryFilters\\Traits\\Filterable;
 
 class Brand extends Model
 {
@@ -51,7 +51,7 @@ class Brand extends Model
 ## 2. Create Filter Class
 
 ```php
-use Astro\\LaravelQueryFilters\\Contracts\\BaseFilters;
+use DevAstro\\LaravelQueryFilters\\Contracts\\BaseFilters;
 
 class BrandFilter extends BaseFilters
 {

@@ -1,8 +1,8 @@
 <?php
 
-namespace Astro\LaravelQueryFilters\Traits;
+namespace DevAstro\LaravelQueryFilters\Traits;
 
-use Astro\LaravelQueryFilters\Contracts\BaseFilters;
+use DevAstro\LaravelQueryFilters\Contracts\BaseFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\App;
 
